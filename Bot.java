@@ -19,11 +19,11 @@ public class Bot {
               "messages": [
                 {
                   "role": "user",
-                  "content": SLACK_WEBHOOK_MESSAGE
+                  "content": "%s"
                 }
               ]
             }
-            """;
+            """.formatted(SLACK_WEBHOOK_MESSAGE);
 
         // HttpClient 생성
         HttpClient client = HttpClient.newHttpClient();
