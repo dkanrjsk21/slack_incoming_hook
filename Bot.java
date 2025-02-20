@@ -6,47 +6,41 @@ import java.io.IOException;
 
 public class Bot {
     public static void main(String[] args) {
-        String webhookUrl = System.getenv("SLACK_WEBHOOK_URL");
-        String message = System.getenv("SLACK_WEBHOOK_MESSAGE");
-        String llmUrl = System.getenv("LLM_URL");
-        String llmKey = System.getenv("LLM_KEY");
-        
-        String modelName = "mixtral-8x7b-32768";
-        String llmRequestBody = """
-            {"messages":[{"role":"user","content":"%s"}],"model":"%s"}
-            """.formatted(message.replace("\"", "\\\""), modelName);
-            
-        HttpClient llmClient = HttpClient.newHttpClient();
-        HttpRequest llmRequest = HttpRequest.newBuilder()
-            .uri(URI.create(llmUrl))
+        // 환경 변수에서 Together API 키를 가져옵니다.
+        String LLM_Key = System.getenv("LLM_KEY");
+        String SLACK_WEBHOOK_MESSAGE = System.getenv("SLACK_WEBHOOK_MESSAGE");
+        // 요청할 Together API의 엔드포인트 URL
+        String togetherUrl = "https://api.together.xyz/v1/chat/completions";
+
+        // 요청 본문(JSON 데이터)
+        String jsonData = """
+            {
+              "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": SLACK_WEBHOOK_MESSAGE
+                }
+              ]
+            }
+            """;
+
+        // HttpClient 생성
+        HttpClient client = HttpClient.newHttpClient();
+
+        // HttpRequest 구성: URL, 헤더, POST 메서드와 본문 설정
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(togetherUrl))
+            .header("Authorization", "Bearer " + togetherApiKey)
             .header("Content-Type", "application/json")
-            .header("Authorization", "Bearer " + llmKey)
-            .POST(HttpRequest.BodyPublishers.ofString(llmRequestBody))
+            .POST(HttpRequest.BodyPublishers.ofString(jsonData))
             .build();
-            
+
         try {
-            HttpResponse<String> llmResponse = llmClient.send(llmRequest, HttpResponse.BodyHandlers.ofString());
-            String llmBody = llmResponse.body();
-            
-            int messageStart = llmBody.indexOf("\"message\":{");
-            int contentStart = llmBody.indexOf("\"content\":\"", messageStart) + 10;
-            int contentEnd = llmBody.indexOf("\"},\"logprobs\"");
-            String content = llmBody.substring(contentStart, contentEnd).replace("\\\"", "\"");
-            
-            content = content.replaceAll("^\"+|\"+$", "");
-            
-            String slackJson = """
-                {"text":"%s"}
-                """.formatted(content.replace("\"", "\\\""));
-                
-            HttpClient slackClient = HttpClient.newHttpClient();
-            HttpRequest slackRequest = HttpRequest.newBuilder()
-                .uri(URI.create(webhookUrl))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(slackJson))
-                .build();
-                
-            HttpResponse<String> slackResponse = slackClient.send(slackRequest, HttpResponse.BodyHandlers.ofString());
+            // 요청 전송 및 응답 받기
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("응답 상태 코드: " + response.statusCode());
+            System.out.println("응답 본문: " + response.body());
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
