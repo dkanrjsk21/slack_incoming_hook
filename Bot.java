@@ -39,7 +39,7 @@ public class Bot {
 
         try {
             // Together AI에 요청 전송 및 응답 수신
-            HttpResponse<String> togetherResponse = client.send(togetherRequest, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> togetherResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
             String responseBody = togetherResponse.body();
             System.out.println("Together API 응답: " + responseBody);
             
