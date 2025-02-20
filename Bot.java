@@ -1,32 +1,53 @@
-import java.net.*;
-import java.net.http.*;
-import java.time.*;
-import java.util.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.io.IOException;
 
 public class Bot {
-    public static void main(String[] args) { // 진입부분
-        // 이게 있어야 이 클래스를 실행했을 때 작동을 함
-        // 웹훅을 만들 거임 -> URL 필요함
-        // 환경변수로 받아올 것임 -> yml 파일에서 전달하게
+    public static void main(String[] args) {
         String webhookUrl = System.getenv("SLACK_WEBHOOK_URL");
-        String message = System.getenv("SLACK_WEBHOOK_MESSAGE");
-
-        // Java 11 -> fetch
-        HttpClient client = HttpClient.newHttpClient();
-        // 요청을 얹힐 거다
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(webhookUrl))
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString("{\"text\":\ + message + "\"}")) 
-            .build();
+        String message = System.getenv("SLACK_WEBHOOK_MSG");
+        String llmUrl = System.getenv("LLM_URL");
+        String llmKey = System.getenv("LLM_KEY");
         
+        String modelName = "mixtral-8x7b-32768";
+        String llmRequestBody = """
+            {"messages":[{"role":"user","content":"%s"}],"model":"%s"}
+            """.formatted(message.replace("\"", "\\\""), modelName);
+            
+        HttpClient llmClient = HttpClient.newHttpClient();
+        HttpRequest llmRequest = HttpRequest.newBuilder()
+            .uri(URI.create(llmUrl))
+            .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + llmKey)
+            .POST(HttpRequest.BodyPublishers.ofString(llmRequestBody))
+            .build();
+            
         try {
-            HttpResponse<String> response = client.send(
-                request, HttpResponse.BodyHandlers.ofString()
-            );
-            System.out.println("요청 코드: " + response.statusCode());
-            System.out.println("응답 결과: " + response.body());
-        } catch (Exception e) {
+            HttpResponse<String> llmResponse = llmClient.send(llmRequest, HttpResponse.BodyHandlers.ofString());
+            String llmBody = llmResponse.body();
+            
+            int messageStart = llmBody.indexOf("\"message\":{");
+            int contentStart = llmBody.indexOf("\"content\":\"", messageStart) + 10;
+            int contentEnd = llmBody.indexOf("\"},\"logprobs\"");
+            String content = llmBody.substring(contentStart, contentEnd).replace("\\\"", "\"");
+            
+            content = content.replaceAll("^\"+|\"+$", "");
+            
+            String slackJson = """
+                {"text":"%s"}
+                """.formatted(content.replace("\"", "\\\""));
+                
+            HttpClient slackClient = HttpClient.newHttpClient();
+            HttpRequest slackRequest = HttpRequest.newBuilder()
+                .uri(URI.create(webhookUrl))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(slackJson))
+                .build();
+                
+            HttpResponse<String> slackResponse = slackClient.send(slackRequest, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
     }
