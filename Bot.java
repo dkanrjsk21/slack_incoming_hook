@@ -7,6 +7,7 @@ import java.io.IOException;
 public class Bot {
     public static void main(String[] args) {
         // 환경 변수에서 Together API 키를 가져옵니다.
+        String webhookUrl = System.getenv("SLACK_WEBHOOK_URL");
         String LLM_KEY = System.getenv("LLM_KEY");
         String SLACK_WEBHOOK_MESSAGE = System.getenv("SLACK_WEBHOOK_MESSAGE");
         // 요청할 Together API의 엔드포인트 URL
@@ -30,7 +31,7 @@ public class Bot {
 
         // HttpRequest 구성: URL, 헤더, POST 메서드와 본문 설정
         HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(togetherUrl))
+            .uri(URI.create(webhookUrl))
             .header("Authorization", "Bearer " + LLM_KEY)
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString(jsonData))
