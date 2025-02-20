@@ -7,7 +7,7 @@ import java.io.IOException;
 public class Bot {
     public static void main(String[] args) {
         String webhookUrl = System.getenv("SLACK_WEBHOOK_URL");
-        String message = System.getenv("SLACK_WEBHOOK_MSG");
+        String message = System.getenv("SLACK_WEBHOOK_MESSAGE");
         String llmUrl = System.getenv("LLM_URL");
         String llmKey = System.getenv("LLM_KEY");
         
